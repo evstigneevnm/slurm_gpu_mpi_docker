@@ -29,7 +29,7 @@ namespace functors
 namespace kernel
 {
 
-template<class Ord, int Dim, class Array>
+template<class Ord, class T, int Dim, class Array>
 struct fill_values
 {
     fill_values(Ord shift, Array array):
@@ -41,7 +41,7 @@ struct fill_values
 
     __DEVICE_TAG__ void operator()(const scfd::static_vec::vec<Ord, Dim> &idx)
     {
-        array_(idx) = shift_;
+        array_(idx) = static_cast<T>(shift_);
     }
 };
 
@@ -61,10 +61,10 @@ struct make_zero
 }
 
 
-template<class ForEach, class Ord, int Dim, class Array>    
+template<class ForEach, class Ord, class T, int Dim, class Array>    
 void fill_values( const ForEach &for_each, const scfd::static_vec::rect<Ord,Dim> &rect, Ord shift, Array array )
 {   
-    for_each( kernel::fill_values<Ord, Dim, Array>(shift, array), rect);
+    for_each( kernel::fill_values<Ord, T, Dim, Array>(shift, array), rect);
 }
 
 template<class ForEach, class Ord, int Dim, class Array>    

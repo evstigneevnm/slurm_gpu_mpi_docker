@@ -25,6 +25,11 @@ We also assume that *docker* and *enroot* have rootless access on your Local mac
 git clone --recurse-submodules https://github.com/evstigneevnm/slurm_gpu_mpi_docker.git 
 
 ```
+go to the root directory of the project:
+```
+cd slurm_gpu_mpi_docker
+```
+and modify `cuda_mpi_prog/Makefile`, variable `CUDA_ARCHITECTURE` to fit to the desired GPU architecture on your Cluster. The defaults are *sm_70* and *sm_80*.
 3. From the root of the repository directory build Docker image as:
 
 ```

@@ -37,7 +37,7 @@ struct vector_operations
     {
         std::size_t size_loc = loc_data.size();
         T res_local = detail::sum_reduce<std::size_t, T, Vec>(size_loc, loc_data);
-        // std::cout << "mpi_.myid = " << mpi_->myid << ", res_local = " << res_local << std::endl;
+        std::cout << "mpi_.myid = " << mpi_->myid << ", res_local = " << res_local << std::endl;
         return mpi_->all_reduce_sum<T>( res_local );
     }
 
@@ -45,6 +45,7 @@ struct vector_operations
     {
         std::size_t size_loc = loc_data.size();
         T res_local = detail::max_reduce<std::size_t, T, Vec>(size_loc, loc_data);
+        std::cout << "mpi_.myid = " << mpi_->myid << ", res_local = " << res_local << std::endl;
         return mpi_->all_reduce_max<T>( res_local );
 
     }
@@ -53,6 +54,7 @@ struct vector_operations
     {
         std::size_t size_loc = loc_data.size();
         T res_local = detail::min_reduce<std::size_t, T, Vec>(size_loc, loc_data);
+        std::cout << "mpi_.myid = " << mpi_->myid << ", res_local = " << res_local << std::endl;
         return mpi_->all_reduce_min<T>( res_local );
     }  
 

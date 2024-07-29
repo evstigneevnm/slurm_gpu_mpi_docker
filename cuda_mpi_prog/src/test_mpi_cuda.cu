@@ -69,6 +69,8 @@ int main(int argc, char *argv[])
     static const double mem_factor = 0.95;
 
     scfd::communication::mpi_wrap mpi(argc, argv);
+    int myid = mpi.comm_world().myid;
+    int nproc = mpi.comm_world().num_procs;
     log_t log;
     timer_t t1,t2;
     t1.record();
@@ -83,14 +85,15 @@ int main(int argc, char *argv[])
     log.info_f("init mpi and cuda: %lf ms.", execution_time);
 
     t1.record();
-    auto mysize = sizes[mpi.comm_world().myid];
+    auto mysize = sizes[myid];
     int nn = static_cast<int>(std::floor(std::pow(mem_factor*mysize, 1.0/3.0) ));
     vec_t vec3(nn,nn,nn);
     rect_t rect_l = rect_t(vec_t::make_zero(), vec3 );
     array_t vec_loc;
     vec_loc.init( vec3 );
-
-    functors::fill_values<for_each_t, big_ordinal, dim, array_t>(for_each, rect_l, mpi.comm_world().myid+1, vec_loc);
+    log.info_all_f("sizes are: %i %i %i", nn,nn,nn);
+    auto myidp1 = myid + 1;
+    functors::fill_values<for_each_t, big_ordinal, value_t, dim, array_t>(for_each, rect_l, myidp1, vec_loc);
     mpi.comm_world().barrier();
     t2.record();
     execution_time = t2.elapsed_time(t1); 
@@ -118,6 +121,7 @@ int main(int argc, char *argv[])
         refernce_reduce_sum = std::reduce(volumes_ref.begin(), volumes_ref.end());
         total_sum = std::reduce(volumes.begin(), volumes.end());
 
+
     }
     log.info_f("running on total_size = %le", static_cast<double>(total_sum) );
 
@@ -140,7 +144,7 @@ int main(int argc, char *argv[])
     t2_max.record();
     execution_time = t2_max.elapsed_time(t1_max);  
     log.info_f("all_reduce_max time: %lf ms.", execution_time);   
-    auto check_max = tests::check_test_to_zero(res_max-4);
+    auto check_max = tests::check_test_to_zero(res_max-nproc);
     log.info_f("all_reduce_max = %.0lf, %s", res_max, check_max.first.c_str() );
 
     t1_min.record();
