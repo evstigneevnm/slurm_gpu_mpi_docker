@@ -29,6 +29,16 @@ namespace functors
 namespace kernel
 {
 
+
+
+template<class Ord, class T>
+__global__ void fill_values_ker(Ord N, Ord shift, T* array)
+{
+    Ord i = blockIdx.x * blockDim.x + threadIdx.x;
+    if(i>=N) return;
+    array[i] = static_cast<T>(shift);
+}
+
 template<class Ord, class T, int Dim, class Array>
 struct fill_values
 {
@@ -65,6 +75,19 @@ template<class ForEach, class Ord, class T, int Dim, class Array>
 void fill_values( const ForEach &for_each, const scfd::static_vec::rect<Ord,Dim> &rect, Ord shift, Array array )
 {   
     for_each( kernel::fill_values<Ord, T, Dim, Array>(shift, array), rect);
+}
+
+
+template<class Ord, class T, int Dim, class Array>    
+void fill_values_ker(const scfd::static_vec::rect<Ord,Dim> &rect, Ord shift, Array array )
+{   
+    Ord N = rect.calc_area();
+    Ord BLOCKSIZE = 256;
+    dim3 dim_block(BLOCKSIZE);
+    Ord grid = (N+BLOCKSIZE)/BLOCKSIZE;
+    dim3 dim_grid( grid );
+
+    kernel::fill_values_ker<Ord, T><<<dim_grid, dim_block>>>(N, shift, array.raw_ptr() );
 }
 
 template<class ForEach, class Ord, int Dim, class Array>    

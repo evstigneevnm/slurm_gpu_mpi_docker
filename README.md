@@ -29,7 +29,8 @@ go to the root directory of the project:
 ```
 cd slurm_gpu_mpi_docker
 ```
-and modify `cuda_mpi_prog/Makefile`, variable `CUDA_ARCHITECTURE` to fit to the desired GPU architecture on your Cluster. The defaults are *sm_70* and *sm_80*.
+*Optionally* modify `cuda_mpi_prog/Makefile`, variable `CUDA_ARCHITECTURE` to fit to the desired [GPU architecture](https://developer.nvidia.com/cuda-gpus#compute) on your Cluster. The defaults are *sm_70* (eg. V100) and *sm_80* (eg. A100).
+
 3. From the root of the repository directory build Docker image as:
 
 ```
@@ -58,9 +59,9 @@ srun --container-image ~/workdir/slurmmpigpu+test+0.01.sqsh --pty bash
 ```
 **WARNING!** This command *is not used* for launching applications, but only to get into the shell `bash` inside your container.
 
-4. We execute our sample program on **4** nodes, each having **8** GPUs with MPI:
+4. Next, we execute the container. For example, we execute our sample program on **4** nodes, each having **8** GPUs with MPI:
 ```
-srun -N4 -n32 -G32 --container-image ~/workdir/slurmmpigpu+test+0.01.sqsh --container-entrypoint test_mpi_cuda.bin
+srun -N4 -n32 -G32 --gpus-per-node=8 --container-image ~/workdir/slurmmpigpu+test+0.01.sqsh --container-entrypoint test_mpi_cuda.bin
 ```
 It should return PASS for all reduce operations.
 
@@ -68,11 +69,27 @@ It should return PASS for all reduce operations.
 
 ### Common execution template is:
 ```
-srun -N number_of_nodes -n number_of_procs -G number_of_gpus --container-image ~/path/to/container.sqsh --container-mounts=/full/path/to/data:/local/container/data  --container-entrypoint containerized_program program_command_line_parameter[, program_command_line_parameter ...]
+srun -N number_of_nodes -n number_of_procs -G number_of_gpus --gpus-per-node=X --container-image ~/path/to/container.sqsh --container-mounts=/full/path/to/data:/local/container/data  --container-entrypoint containerized_program program_command_line_parameter[, program_command_line_parameter ...]
 ```
 - `-N number_of_nodes` is the number of nodes to be executed on. Each node can contain several GPUs.
 - `-G number_of_gpus` is the total number of GPUs to be passed to the container.
 - `-n number_of_procs` is the global number of MPI processes usually equals the total number of GPUs.
+- `--gpus-per-node=X` is the number of GPUs per each node (slurm assumes the nodes are GPU homogeneous).
+
+**WARNING!** This sample program will terminate if the `srun` is configured incorrectly w.r.t. the GPUs. 
+If the Cluster has each node of **8** GPUs and attempts to execute `-G 10` option, this will result in the incorrect binding of GPUs. Hence resource acquisition is possible only as the multiple of a single node. 
+Example of a 
+**CORRECT LAUNCH**:
+```
+srun -N3 -n17 -G24 --gpus-per-node=8 --container-image ~/workdir/slurmmpigpu+test+0.01.sqsh --container-entrypoint test_mpi_cuda.bin
+```
+which will spawn **17** processes, each process will take a GPU from a node. It will use **3** nodes (`-N3`), each node is having **8** GPUs (`--gpus-per-node=8`) and pyxis will map  3 * 8 = **24** GPUs (`-G24`).
+
+**INCORRECT LAUNCH:**
+```
+srun -N3 -n17 -G17 --gpus-per-node=8 --container-image ~/workdir/slurmmpigpu+test+0.01.sqsh --container-entrypoint test_mpi_cuda.bin
+```
+will throw an exception. Incorrect behavior is related to the mapping of **17** GPUs which are not multiple of **8**.
 
 ### Additional options for pyxis srun are found [here](https://github.com/NVIDIA/pyxis).
 Options that I find useful:

@@ -12,8 +12,8 @@ MPICC = $(ROOT_MPI)/bin/mpic++
 OPENMP = -fopenmp -lpthread
 
 rel:
-	$(NVCC) -O3 -std=c++17 $(CUDA_ARCHITECTURE) -I$(INCLUDE_SCFD) -I$(INCLUDE_SRC) -I$(INCLUDE_MPI) src/test_mpi_cuda.cu -c -o test_mpi_cuda.obj -Xcompiler $(OPENMP)
-	$(MPICC) test_mpi_cuda.obj -L$(LIB_CUDA) -L$(LIB_MPI) -lcudart $(OPENMP) -o test_mpi_cuda.bin
+	$(NVCC) -O3 -std=c++17 $(CUDA_ARCHITECTURE) -I$(INCLUDE_SCFD) -I$(INCLUDE_SRC) -I$(INCLUDE_MPI) src/test_mpi_cuda.cu -c -o test_mpi_cuda.obj -Xcompiler -fopenmp
+	$(MPICC) test_mpi_cuda.obj -L$(LIB_CUDA) -L$(LIB_MPI) -lcudart -o test_mpi_cuda.bin $(OPENMP)
 	rm test_mpi_cuda.obj
 
 

@@ -24,12 +24,15 @@
 #include <scfd/communication/mpi_comm_info.h>
 #include <scfd/utils/log_mpi.h>
 #include <scfd/memory/cuda.h>
-#define SCFD_ARRAYS_ENABLE_INDEX_SHIFT
+#include <scfd/memory/unified.h>
+// #define SCFD_ARRAYS_ENABLE_INDEX_SHIFT
 #include <scfd/arrays/array_nd.h>
 #include <scfd/for_each/cuda_nd.h>
 #include <scfd/for_each/cuda_nd_impl.cuh>
 #include <scfd/static_vec/vec.h>
 #include <scfd/static_vec/rect.h>
+
+#include <thrust/device_ptr.h>
 
 #include <vector_operations.h>
 #include <functors.h>
@@ -61,12 +64,13 @@ int main(int argc, char *argv[])
     using big_ordinal = long int;
     using mem_t = scfd::memory::cuda_device;
     using array_t = scfd::arrays::array_nd<value_t, dim, mem_t>;
+    using array_view_t = typename array_t::view_type;
     using vec_ops_t = vector_operations<value_t, array_t>; 
     using vec_t = scfd::static_vec::vec<big_ordinal, dim>;
     using rect_t = scfd::static_vec::rect<big_ordinal, dim>;
     using for_each_t = scfd::for_each::cuda_nd<dim, big_ordinal>;
     using timer_t = scfd::utils::mpi_timer_event;
-    static const double mem_factor = 0.95;
+    static const double mem_factor = 0.3; //reduce array size due to thrust::reduce bug
 
     scfd::communication::mpi_wrap mpi(argc, argv);
     int myid = mpi.comm_world().myid;
@@ -74,11 +78,10 @@ int main(int argc, char *argv[])
     log_t log;
     timer_t t1,t2;
     t1.record();
-    auto device_id = scfd::utils::init_cuda_mpi( mpi.comm_world() );
+    auto device_id = scfd::utils::init_cuda_mpi( mpi.comm_world());
     vec_ops_t vec_ops( &mpi.data );
     for_each_t for_each;
     auto sizes = get_max_size_per_gpu<value_t>( mpi.comm_world() );
-    // std::size_t total_size = std::reduce(sizes.begin(), sizes.end());
     mpi.comm_world().barrier();
     t2.record();
     auto execution_time = t2.elapsed_time(t1); 
@@ -91,9 +94,10 @@ int main(int argc, char *argv[])
     rect_t rect_l = rect_t(vec_t::make_zero(), vec3 );
     array_t vec_loc;
     vec_loc.init( vec3 );
-    log.info_all_f("sizes are: %i %i %i", nn,nn,nn);
+    log.info_all_f("sizes are: %i %i %i, log_2(total size) = %.1f", nn,nn,nn, std::log( double(nn)*double(nn)*double(nn) )/std::log(2) );
     auto myidp1 = myid + 1;
-    functors::fill_values<for_each_t, big_ordinal, value_t, dim, array_t>(for_each, rect_l, myidp1, vec_loc);
+    functors::fill_values_ker<big_ordinal, value_t, dim, array_t>(rect_l, myidp1, vec_loc );
+
     mpi.comm_world().barrier();
     t2.record();
     execution_time = t2.elapsed_time(t1); 
